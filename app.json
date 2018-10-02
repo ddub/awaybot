@@ -6,6 +6,10 @@
   "env": {
     "FEED_URL": "Calendar feed",
     "SLACK_HOOK_URL": "Slack remote control hook",
-    "NAMES": "Semicolon separated list of names"
+    "NAMES": "Semicolon separated list of names",
+    "SHOW_EMPTY": { 
+      "description": "Always message even if no vacations",
+      "value": "false"
+    }
   }
 }

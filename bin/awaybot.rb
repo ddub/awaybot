@@ -87,9 +87,14 @@ ics.events.each do |event|
   end
 end
 
-if msg != '' && !today.saturday? && !today.sunday?
+if (msg == '' and ENV['SHOW_EMPTY'].downcase == 'true')
+  msg = "No vacations planned. :briefcase:"
+elsif msg != ''
   msg = ":city_sunrise: Good morning! Here's who's off for the next" \
     " #{cfg["#{type}_announce"]['look_forward_days']} days.\n#{msg}"
+end
+
+if msg != '' && !today.saturday? && !today.sunday?
   puts msg
   slack = Slack::Notifier.new ENV['SLACK_HOOK_URL']
   slack.ping msg
