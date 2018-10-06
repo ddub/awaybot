@@ -71,7 +71,7 @@ ics.events.each do |event|
       end
       msg += "#{first_name} is off for #{away_duration} days starting" \
         " #{nxt}#{away_start.strftime('%A, %B %-d')} until" \
-        " #{away_end.strftime('%A, %B %-d')}.\n"
+        " #{return_day.strftime('%A, %B %-d')}.\n"
     end
   else
     if away_end - today > 0
