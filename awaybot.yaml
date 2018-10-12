@@ -1,3 +1,5 @@
+longterm_announce:
+  look_forward_days: 30
 major_announce:
   look_forward_days: 7
 minor_announce:
