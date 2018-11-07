@@ -30,6 +30,7 @@ if ENV['DEBUG']
   puts ENV['NAMES'].split(';')
 end
 
+people = {}
 ics.events.each do |event|
   puts "#{event.summary} (#{event.dtstart} - #{event.dtend})" if ENV['DEBUG']
   # Summary in the form of: "FirstName LastName (Time off - 0.5 days)"
@@ -38,7 +39,9 @@ ics.events.each do |event|
     puts "#{name} not in team"
     next
   end
-  first_name = name
+
+  people[name] = Array.new unless people.key?(name)
+
   away_start = event.dtstart - 0
   away_end = event.dtend - 1
   return_day = away_end + 1
@@ -55,34 +58,70 @@ ics.events.each do |event|
   look_range =
     today..(today + cfg["#{type}_announce"]['look_forward_days'])
   next if (away_range.to_a & look_range.to_a).empty?
-  puts "Message calc..."
-  if away_start > today
-    if away_duration == 1 and partial_day
-      msg += "#{first_name} is off for part of the day on" \
-        " #{away_start.strftime('%A, %B %-d')}.\n"
-    elsif away_duration == 1
-      msg += "#{first_name} is off for the day on" \
-        " #{away_start.strftime('%A, %B %-d')}.\n"
-    else
-      if today.strftime('%A') == away_start.strftime('%A')
-        nxt = 'next '
-      else
-        nxt = ''
+
+  people[name].push({
+    away_start: away_start,
+    away_end: away_end,
+    return_day: return_day,
+    away_range: away_range,
+    away_duration: away_duration,
+    partial_day: partial_day,
+  })
+end
+
+people.each do |full_name, all_time_off|
+  aggregated_time_off = Array.new
+
+  if all_time_off.length > 1
+    first_time_block = all_time_off.shift
+    all_time_off.each_with_index do |time_off, index|
+      if time_off[:away_start] <= first_time_block[:return_day]
+        aggregated_time_off.push({
+          away_start: first_time_block[:away_start],
+          away_end: time_off[:away_end],
+          return_day: time_off[:return_day],
+          away_range: first_time_block[:away_start]..time_off[:away_end],
+          away_duration: (time_off[:away_end] - first_time_block[:away_start]).to_i + 1,
+          partial_day: time_off[:partial_day],
+        })
+        first_time_block = all_time_off[index + 1]
       end
-      msg += "#{first_name} is off for #{away_duration} days starting" \
-        " #{nxt}#{away_start.strftime('%A, %B %-d')} until" \
-        " #{return_day.strftime('%A, %B %-d')}.\n"
     end
   else
-    if away_end - today > 0
-      text_return = ChronicDuration.output(
-        (return_day - today) * 60 * 60 * 24, weeks: true, format: :long, units: 2
-      )
-      msg += "#{first_name} is off today, returning in #{text_return}.\n"
-    elsif partial_day
-      msg += "#{first_name} is off part of today.\n"
+    aggregated_time_off = all_time_off
+  end
+
+  puts aggregated_time_off
+
+  aggregated_time_off.each do |time_off|
+    if time_off[:away_start] > today
+      if time_off[:away_duration] == 1 and time_off[:partial_day]
+        msg += "#{full_name} is off for part of the day on" \
+          " #{time_off[:away_start].strftime('%A, %B %-d')}.\n"
+      elsif time_off[:away_duration] == 1
+        msg += "#{full_name} is off for the day on" \
+          " #{time_off[:away_start].strftime('%A, %B %-d')}.\n"
+      else
+        if today.strftime('%A') == time_off[:away_start].strftime('%A')
+          nxt = 'next '
+        else
+          nxt = ''
+        end
+        msg += "#{full_name} is off for #{time_off[:away_duration]} days starting" \
+          " #{nxt}#{time_off[:away_start].strftime('%A, %B %-d')} until" \
+          " #{time_off[:return_day].strftime('%A, %B %-d')}.\n"
+      end
     else
-      msg += "#{first_name} is off today.\n"
+      if time_off[:away_end] - today > 0
+        text_return = ChronicDuration.output(
+          (time_off[:return_day] - today) * 60 * 60 * 24, weeks: true, format: :long, units: 2
+        )
+        msg += "#{full_name} is off today, returning in #{text_return} on #{time_off[:return_day].strftime('%A, %B %-d')}.\n"
+      elsif time_off[:partial_day]
+        msg += "#{full_name} is off part of today.\n"
+      else
+        msg += "#{full_name} is off today.\n"
+      end
     end
   end
 end
